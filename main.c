@@ -1,8 +1,8 @@
 /**
- * @file    main_clean.c
+ * @file    main.c
+ * @author Nellore Harikrishna<nharikrishna6231@gmail.com>
  * @brief   STM32F4 Discovery — Accelerometer Tilt → LED Demo
- *          Cleanly rewritten version with named constants,
- *          clear comments, and structured code.
+ *
  *
  * Hardware:
  *   Board  : STM32F4 Discovery
@@ -22,49 +22,48 @@
 
 /* ============================================================
  *  SECTION 1 — PIN & REGISTER CONSTANTS
- *  Naming every magic number so the code reads like English.
  * ============================================================ */
 
 /* --- LED pins on GPIOD --- */
-#define LED_GREEN_PIN       12U
-#define LED_ORANGE_PIN      13U
-#define LED_RED_PIN         14U
-#define LED_BLUE_PIN        15U
+#define LED_GREEN_PIN 12U
+#define LED_ORANGE_PIN 13U
+#define LED_RED_PIN 14U
+#define LED_BLUE_PIN 15U
 
-#define LED_GREEN           (1U << LED_GREEN_PIN)
-#define LED_ORANGE          (1U << LED_ORANGE_PIN)
-#define LED_RED             (1U << LED_RED_PIN)
-#define LED_BLUE            (1U << LED_BLUE_PIN)
-#define LED_ALL             (LED_GREEN | LED_ORANGE | LED_RED | LED_BLUE)
+#define LED_GREEN (1U << LED_GREEN_PIN)
+#define LED_ORANGE (1U << LED_ORANGE_PIN)
+#define LED_RED (1U << LED_RED_PIN)
+#define LED_BLUE (1U << LED_BLUE_PIN)
+#define LED_ALL (LED_GREEN | LED_ORANGE | LED_RED | LED_BLUE)
 
 /* --- SPI1 pins on GPIOA --- */
-#define SPI1_SCK_PIN        5U   /* PA5 */
-#define SPI1_MISO_PIN       6U   /* PA6 */
-#define SPI1_MOSI_PIN       7U   /* PA7 */
+#define SPI1_SCK_PIN 5U  /* PA5 */
+#define SPI1_MISO_PIN 6U /* PA6 */
+#define SPI1_MOSI_PIN 7U /* PA7 */
 
 /* --- Chip Select on GPIOE --- */
-#define ACCEL_CS_PIN        3U   /* PE3 */
-#define ACCEL_CS_HIGH()     (GPIOE->ODR |=  (1U << ACCEL_CS_PIN))
-#define ACCEL_CS_LOW()      (GPIOE->ODR &= ~(1U << ACCEL_CS_PIN))
+#define ACCEL_CS_PIN 3U /* PE3 */
+#define ACCEL_CS_HIGH() (GPIOE->ODR |= (1U << ACCEL_CS_PIN))
+#define ACCEL_CS_LOW() (GPIOE->ODR &= ~(1U << ACCEL_CS_PIN))
 
 /* --- RCC clock enable bits --- */
-#define RCC_GPIOA_EN        (1U << 0)
-#define RCC_GPIOD_EN        (1U << 3)
-#define RCC_GPIOE_EN        (1U << 4)
-#define RCC_SPI1_EN         (1U << 12)
+#define RCC_GPIOA_EN (1U << 0)
+#define RCC_GPIOD_EN (1U << 3)
+#define RCC_GPIOE_EN (1U << 4)
+#define RCC_SPI1_EN (1U << 12)
 
 /* --- SPI CR1 bit positions --- */
-#define SPI_CR1_CPHA        (1U << 0)   /* Clock phase */
-#define SPI_CR1_CPOL        (1U << 1)   /* Clock polarity */
-#define SPI_CR1_MSTR        (1U << 2)   /* Master mode */
-#define SPI_CR1_BR_DIV256   (7U << 3)   /* Baud = PCLK/256 */
-#define SPI_CR1_SSI         (1U << 8)   /* Internal SS */
-#define SPI_CR1_SSM         (1U << 9)   /* Software SS mgmt */
-#define SPI_CR1_SPE         (1U << 6)   /* SPI Enable */
+#define SPI_CR1_CPHA (1U << 0)      /* Clock phase */
+#define SPI_CR1_CPOL (1U << 1)      /* Clock polarity */
+#define SPI_CR1_MSTR (1U << 2)      /* Master mode */
+#define SPI_CR1_BR_DIV256 (7U << 3) /* Baud = PCLK/256 */
+#define SPI_CR1_SSI (1U << 8)       /* Internal SS */
+#define SPI_CR1_SSM (1U << 9)       /* Software SS mgmt */
+#define SPI_CR1_SPE (1U << 6)       /* SPI Enable */
 
 /* --- SPI SR status flags --- */
-#define SPI_SR_RXNE         (1U << 0)   /* Receive buffer not empty */
-#define SPI_SR_TXE          (1U << 1)   /* Transmit buffer empty */
+#define SPI_SR_RXNE (1U << 0) /* Receive buffer not empty */
+#define SPI_SR_TXE (1U << 1)  /* Transmit buffer empty */
 
 /* ============================================================
  *  SECTION 2 — SENSOR CONSTANTS
@@ -72,14 +71,14 @@
  * ============================================================ */
 
 /* WHO_AM_I register (same address on both chips) */
-#define ACCEL_REG_WHO_AM_I      0x0F
+#define ACCEL_REG_WHO_AM_I 0x0F
 
 /* Chip identity codes returned by WHO_AM_I */
-#define LIS3DSH_CHIP_ID         0x3F
-#define LIS302DL_CHIP_ID        0x3B
+#define LIS3DSH_CHIP_ID 0x3F
+#define LIS302DL_CHIP_ID 0x3B
 
 /* Control register (same address, different values per chip) */
-#define ACCEL_REG_CTRL          0x20
+#define ACCEL_REG_CTRL 0x20
 
 /*
  * LIS3DSH CTRL_REG4 = 0x67
@@ -88,7 +87,7 @@
  *   Bit  [1]   = 1    → Y axis on
  *   Bit  [0]   = 1    → X axis on
  */
-#define LIS3DSH_CTRL_100HZ_XYZ  0x67
+#define LIS3DSH_CTRL_100HZ_XYZ 0x67
 
 /*
  * LIS302DL CTRL_REG1 = 0x47
@@ -100,28 +99,28 @@
 #define LIS302DL_CTRL_POWER_XYZ 0x47
 
 /* Output data registers — X, Y, Z, each split into LOW and HIGH byte */
-#define ACCEL_REG_OUT_X_L       0x28
-#define ACCEL_REG_OUT_X_H       0x29
-#define ACCEL_REG_OUT_Y_L       0x2A
-#define ACCEL_REG_OUT_Y_H       0x2B
-#define ACCEL_REG_OUT_Z_L       0x2C
-#define ACCEL_REG_OUT_Z_H       0x2D
+#define ACCEL_REG_OUT_X_L 0x28
+#define ACCEL_REG_OUT_X_H 0x29
+#define ACCEL_REG_OUT_Y_L 0x2A
+#define ACCEL_REG_OUT_Y_H 0x2B
+#define ACCEL_REG_OUT_Z_L 0x2C
+#define ACCEL_REG_OUT_Z_H 0x2D
 
 /*
  * SPI protocol convention for LIS3DSH / LIS302DL:
  *   Bit 7 of the address byte = 1 → READ operation
  *   Bit 7 of the address byte = 0 → WRITE operation
  */
-#define ACCEL_READ_FLAG         0x80    /* OR  with address to read  */
-#define ACCEL_WRITE_MASK        0x7F    /* AND with address to write */
-#define ACCEL_DUMMY_BYTE        0xFF    /* Sent during read to clock in data */
+#define ACCEL_READ_FLAG 0x80  /* OR  with address to read  */
+#define ACCEL_WRITE_MASK 0x7F /* AND with address to write */
+#define ACCEL_DUMMY_BYTE 0xFF /* Sent during read to clock in data */
 
 /* ============================================================
  *  SECTION 3 — TILT DETECTION THRESHOLD
  *  5000 out of ±32767 ≈ 15% of full scale.
  *  Increase to need a sharper tilt, decrease for more sensitivity.
  * ============================================================ */
-#define TILT_THRESHOLD          5000
+#define TILT_THRESHOLD 5000
 
 /* ============================================================
  *  SECTION 4 — GLOBAL SENSOR STATE
@@ -140,15 +139,16 @@ static volatile uint8_t sensor_chip_id = 0;
  * ============================================================ */
 static void delay_cycles(volatile uint32_t count)
 {
-    while (count--);
+    while (count--)
+        ;
 }
 
 /* Convenience wrappers so callers use meaningful names */
-#define DELAY_SHORT()       delay_cycles(10U)
-#define DELAY_MEDIUM()      delay_cycles(100000U)
-#define DELAY_LONG()        delay_cycles(500000U)
-#define DELAY_STARTUP()     delay_cycles(2000000U)
-#define DELAY_LOOP()        delay_cycles(100000U)
+#define DELAY_SHORT() delay_cycles(10U)
+#define DELAY_MEDIUM() delay_cycles(100000U)
+#define DELAY_LONG() delay_cycles(500000U)
+#define DELAY_STARTUP() delay_cycles(2000000U)
+#define DELAY_LOOP() delay_cycles(100000U)
 
 /* ============================================================
  *  SECTION 6 — LED DRIVER
@@ -174,10 +174,10 @@ static void LED_Init(void)
      *   PD14 → bits [29:28] → set bit 28
      *   PD15 → bits [31:30] → set bit 30
      */
-    GPIOD->MODER |= (1U << (LED_GREEN_PIN  * 2U)) |
+    GPIOD->MODER |= (1U << (LED_GREEN_PIN * 2U)) |
                     (1U << (LED_ORANGE_PIN * 2U)) |
-                    (1U << (LED_RED_PIN    * 2U)) |
-                    (1U << (LED_BLUE_PIN   * 2U));
+                    (1U << (LED_RED_PIN * 2U)) |
+                    (1U << (LED_BLUE_PIN * 2U));
 }
 
 /** @brief Turn on all 4 LEDs. */
@@ -207,7 +207,7 @@ static void LED_Blink(uint16_t led_mask, uint8_t times)
 {
     for (uint8_t i = 0; i < times; i++)
     {
-        GPIOD->ODR |=  led_mask;
+        GPIOD->ODR |= led_mask;
         DELAY_LONG();
         GPIOD->ODR &= ~led_mask;
         DELAY_LONG();
@@ -233,48 +233,48 @@ static void LED_Blink(uint16_t led_mask, uint8_t times)
 static void SPI1_Init(void)
 {
     /* ── 1. Enable clocks ─────────────────────────────────── */
-    RCC->AHB1ENR |= RCC_GPIOA_EN;   /* GPIOA for SCK/MISO/MOSI */
-    RCC->AHB1ENR |= RCC_GPIOE_EN;   /* GPIOE for CS pin         */
-    RCC->APB2ENR |= RCC_SPI1_EN;    /* SPI1 peripheral itself   */
-    delay_cycles(1000);              /* Let clocks stabilise     */
+    RCC->AHB1ENR |= RCC_GPIOA_EN; /* GPIOA for SCK/MISO/MOSI */
+    RCC->AHB1ENR |= RCC_GPIOE_EN; /* GPIOE for CS pin         */
+    RCC->APB2ENR |= RCC_SPI1_EN;  /* SPI1 peripheral itself   */
+    delay_cycles(1000);           /* Let clocks stabilise     */
 
     /* ── 2. Configure PA5/PA6/PA7 as Alternate Function ───── */
     /*
      * MODER: clear the 2 bits per pin, then set to 10 (AF mode).
      * Three pins × 2 bits = 6 bits, starting at pin 5's position (bit 10).
      */
-    GPIOA->MODER &= ~(0x3FU << (SPI1_SCK_PIN * 2U));  /* clear */
-    GPIOA->MODER |=  (0x2AU << (SPI1_SCK_PIN * 2U));  /* set AF */
+    GPIOA->MODER &= ~(0x3FU << (SPI1_SCK_PIN * 2U)); /* clear */
+    GPIOA->MODER |= (0x2AU << (SPI1_SCK_PIN * 2U));  /* set AF */
 
     /*
      * AFR[0] selects which AF for pins 0–7.
      * Each pin has 4 bits. AF5 = 0101 = SPI1.
      * Three pins × 4 bits = 12 bits at position pin5*4 = 20.
      */
-    GPIOA->AFR[0] &= ~(0xFFFU << (SPI1_SCK_PIN * 4U));  /* clear */
-    GPIOA->AFR[0] |=  (0x555U << (SPI1_SCK_PIN * 4U));  /* AF5   */
+    GPIOA->AFR[0] &= ~(0xFFFU << (SPI1_SCK_PIN * 4U)); /* clear */
+    GPIOA->AFR[0] |= (0x555U << (SPI1_SCK_PIN * 4U));  /* AF5   */
 
     /* High-speed output for clean clock edges */
     GPIOA->OSPEEDR |= (0x3FU << (SPI1_SCK_PIN * 2U));
 
     /* ── 3. Configure PE3 as GPIO output for Chip Select ──── */
-    GPIOE->MODER &= ~(3U << (ACCEL_CS_PIN * 2U));   /* clear */
-    GPIOE->MODER |=  (1U << (ACCEL_CS_PIN * 2U));   /* output */
-    ACCEL_CS_HIGH();   /* Deselect sensor — CS starts HIGH */
+    GPIOE->MODER &= ~(3U << (ACCEL_CS_PIN * 2U)); /* clear */
+    GPIOE->MODER |= (1U << (ACCEL_CS_PIN * 2U));  /* output */
+    ACCEL_CS_HIGH();                              /* Deselect sensor — CS starts HIGH */
 
     delay_cycles(1000);
 
     /* ── 4. Configure SPI1 ────────────────────────────────── */
-    SPI1->CR1 = 0;  /* Disable SPI before changing settings */
+    SPI1->CR1 = 0; /* Disable SPI before changing settings */
 
-    SPI1->CR1 = SPI_CR1_CPHA       |  /* Data on 2nd clock edge (Mode 3) */
-                SPI_CR1_CPOL       |  /* Clock idles HIGH         (Mode 3) */
-                SPI_CR1_MSTR       |  /* STM32 is the master               */
-                SPI_CR1_BR_DIV256  |  /* Slowest speed for reliability      */
-                SPI_CR1_SSI        |  /* Prevent 'multi-master' error       */
-                SPI_CR1_SSM;         /* We manage CS in software            */
+    SPI1->CR1 = SPI_CR1_CPHA |      /* Data on 2nd clock edge (Mode 3) */
+                SPI_CR1_CPOL |      /* Clock idles HIGH         (Mode 3) */
+                SPI_CR1_MSTR |      /* STM32 is the master               */
+                SPI_CR1_BR_DIV256 | /* Slowest speed for reliability      */
+                SPI_CR1_SSI |       /* Prevent 'multi-master' error       */
+                SPI_CR1_SSM;        /* We manage CS in software            */
 
-    SPI1->CR1 |= SPI_CR1_SPE;     /* Enable SPI — ready to go! */
+    SPI1->CR1 |= SPI_CR1_SPE; /* Enable SPI — ready to go! */
 
     delay_cycles(1000);
 }
@@ -291,13 +291,15 @@ static void SPI1_Init(void)
 static uint8_t SPI1_TransferByte(uint8_t tx_byte)
 {
     /* Wait until TX buffer is empty (previous byte has been sent) */
-    while (!(SPI1->SR & SPI_SR_TXE));
+    while (!(SPI1->SR & SPI_SR_TXE))
+        ;
 
     /* Load our byte — hardware starts clocking it out immediately */
     SPI1->DR = tx_byte;
 
     /* Wait until RX buffer has the sensor's response */
-    while (!(SPI1->SR & SPI_SR_RXNE));
+    while (!(SPI1->SR & SPI_SR_RXNE))
+        ;
 
     /* Return the received byte */
     return (uint8_t)(SPI1->DR);
@@ -326,7 +328,7 @@ static uint8_t ACCEL_ReadRegister(uint8_t reg_addr)
     ACCEL_CS_LOW();
     DELAY_SHORT();
 
-    SPI1_TransferByte(reg_addr | ACCEL_READ_FLAG);   /* Send address + READ bit */
+    SPI1_TransferByte(reg_addr | ACCEL_READ_FLAG);        /* Send address + READ bit */
     received_value = SPI1_TransferByte(ACCEL_DUMMY_BYTE); /* Clock in the data  */
 
     DELAY_SHORT();
@@ -352,8 +354,8 @@ static void ACCEL_WriteRegister(uint8_t reg_addr, uint8_t value)
     ACCEL_CS_LOW();
     DELAY_SHORT();
 
-    SPI1_TransferByte(reg_addr & ACCEL_WRITE_MASK);  /* Address + WRITE bit */
-    SPI1_TransferByte(value);                        /* Data to write       */
+    SPI1_TransferByte(reg_addr & ACCEL_WRITE_MASK); /* Address + WRITE bit */
+    SPI1_TransferByte(value);                       /* Data to write       */
 
     DELAY_SHORT();
     ACCEL_CS_HIGH();
@@ -373,19 +375,19 @@ static void ACCEL_ReadXYZ(void)
     uint8_t low_byte, high_byte;
 
     /* X axis */
-    low_byte  = ACCEL_ReadRegister(ACCEL_REG_OUT_X_L);
+    low_byte = ACCEL_ReadRegister(ACCEL_REG_OUT_X_L);
     high_byte = ACCEL_ReadRegister(ACCEL_REG_OUT_X_H);
-    accel_x   = (int16_t)((high_byte << 8) | low_byte);
+    accel_x = (int16_t)((high_byte << 8) | low_byte);
 
     /* Y axis */
-    low_byte  = ACCEL_ReadRegister(ACCEL_REG_OUT_Y_L);
+    low_byte = ACCEL_ReadRegister(ACCEL_REG_OUT_Y_L);
     high_byte = ACCEL_ReadRegister(ACCEL_REG_OUT_Y_H);
-    accel_y   = (int16_t)((high_byte << 8) | low_byte);
+    accel_y = (int16_t)((high_byte << 8) | low_byte);
 
     /* Z axis */
-    low_byte  = ACCEL_ReadRegister(ACCEL_REG_OUT_Z_L);
+    low_byte = ACCEL_ReadRegister(ACCEL_REG_OUT_Z_L);
     high_byte = ACCEL_ReadRegister(ACCEL_REG_OUT_Z_H);
-    accel_z   = (int16_t)((high_byte << 8) | low_byte);
+    accel_z = (int16_t)((high_byte << 8) | low_byte);
 }
 
 /* ============================================================
@@ -408,7 +410,7 @@ static uint8_t ACCEL_DetectAndEnable(void)
         if (sensor_chip_id == LIS3DSH_CHIP_ID ||
             sensor_chip_id == LIS302DL_CHIP_ID)
         {
-            break;  /* Valid ID found — stop retrying */
+            break; /* Valid ID found — stop retrying */
         }
 
         DELAY_MEDIUM();
@@ -468,14 +470,14 @@ static void TILT_UpdateLEDs(void)
 
     /* X axis: positive = right, negative = left */
     if (accel_x > TILT_THRESHOLD)
-        LED_On(LED_RED);    /* Tilting RIGHT */
+        LED_On(LED_RED); /* Tilting RIGHT */
 
     if (accel_x < -TILT_THRESHOLD)
-        LED_On(LED_BLUE);   /* Tilting LEFT  */
+        LED_On(LED_BLUE); /* Tilting LEFT  */
 
     /* Y axis: positive = forward, negative = backward */
     if (accel_y > TILT_THRESHOLD)
-        LED_On(LED_GREEN);  /* Tilting FORWARD   */
+        LED_On(LED_GREEN); /* Tilting FORWARD   */
 
     if (accel_y < -TILT_THRESHOLD)
         LED_On(LED_ORANGE); /* Tilting BACKWARD  */
@@ -530,7 +532,8 @@ int main(void)
         /* Sensor not found — hang here so the error blink
          * stays visible. In a real product you'd log the
          * fault and enter a safe/low-power mode. */
-        while (1);
+        while (1)
+            ;
     }
 
     /* ── Main loop ───────────────────────────────────────── */
@@ -544,8 +547,8 @@ int main(void)
      */
     while (1)
     {
-        ACCEL_ReadXYZ();       /* Get latest X, Y, Z values  */
-        TILT_UpdateLEDs();     /* Map tilt direction to LEDs */
-        DELAY_LOOP();          /* ~10ms pause between reads  */
+        ACCEL_ReadXYZ();   /* Get latest X, Y, Z values  */
+        TILT_UpdateLEDs(); /* Map tilt direction to LEDs */
+        DELAY_LOOP();      /* ~10ms pause between reads  */
     }
 }
