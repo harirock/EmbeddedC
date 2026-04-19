@@ -1,8 +1,6 @@
 📡 STM32 Accelerometer LED Indicator
 📖 Overview
-
 This project demonstrates how to interface an SPI-based accelerometer with an STM32 microcontroller and visualize motion using onboard LEDs.
-
 The system reads acceleration data (X and Y axes) and lights up different LEDs based on the tilt direction.
 
 🚀 Features
